@@ -10,20 +10,22 @@ epochs:300-500
 
 2. Teoria (40%)
 
-	QR Kody a Detektory	
+	Detektory	
  		- Problematika v detekcii v prostore
-		- Zname modely
+		- Rozdiel detekcia vs klasifikacia
+		- Modely
 		- Yolo
 		- Proc je yolo dobre
-		- Proc sem vybral yolo
-
-	Metody pro neural pruning a kvantizaci?( Mrda 	vzorcu ) / Metody pro efektivnost ?
-		- Co to je pruning ( Mrda vzorcu )
-		- Jaky su spusoby pruningu
-		- Proc je yolo dobre na pruning
-		- Jak sa experimentuje s pruningem
-		- Kvantizace ?
-
+		
+	Qr kody
+		- analyza dovodu preco je detekcia mozna a jej vyhody
+		- zmysel
+	Efektivnost
+		- techniky
+		- pruning (Pruning and Quantization for Deep Neural Network Acceleration: A Survey)
+		- kvantizacia (Quantisation and Pruning for Neural Network Compression and Regularisation) 
+		- ciel
+	
 	Vyber datovej sady
 		- Yolo Anotacie
 		- Vyber, hledanie
