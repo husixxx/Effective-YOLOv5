@@ -8,12 +8,6 @@ epochs:300-500
 
 1. Uvod
 
-## 1. Úvod
-
-Krátky úvod do problematiky, ciele práce a význam efektívnych modelov v detekcii QR kódov.
-
----
-
 ## 2. Teoria (40 %)
 
 ### 2.1 Detektory
@@ -30,7 +24,6 @@ Krátky úvod do problematiky, ciele práce a význam efektívnych modelov v det
 
 ### 2.2 QR kódy
 - **Analýza dôvodov detekcie QR kódov:**
-  - Vysvetlenie vlastností QR kódov (kontrast, geometria)
 - **Zmysel a výhody detekcie:**
   
 
