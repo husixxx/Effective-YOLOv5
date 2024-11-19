@@ -10,26 +10,26 @@ epochs:300-500
 
 2. Teoria (40%)
 
-	Detektory	
- 		- Problematika v detekcii v prostore
-		- Rozdiel detekcia vs klasifikacia
-		- Modely
-		- Yolo
-		- Proc je yolo dobre
+2.1. Detektory	
+	- Problematika v detekcii v prostore
+	- Rozdiel detekcia vs klasifikacia
+	- Modely
+	- Yolo
+	- Proc je yolo dobre
 		
-	Qr kody
-		- analyza dovodu preco je detekcia mozna a jej vyhody
-		- zmysel
-	Efektivnost
-		- techniky
-		- pruning (Pruning and Quantization for Deep Neural Network Acceleration: A Survey)
-		- kvantizacia (Quantisation and Pruning for Neural Network Compression and Regularisation) 
-		- ciel
-	
-	Vyber datovej sady
-		- Yolo Anotacie
-		- Vyber, hledanie
-		- Samotna anotacia
+2.2 Qr kody
+	- analyza dovodu preco je detekcia mozna a jej vyhody
+	- zmysel
+2.3 Efektivnost
+	- techniky
+	- pruning (Pruning and Quantization for Deep Neural Network Acceleration: A Survey)
+	- kvantizacia (Quantisation and Pruning for Neural Network Compression and Regularisation) 
+	- ciel
+
+2.4 Vyber datovej sady
+	- Yolo Anotacie
+	- Vyber, hledanie
+	- Samotna anotacia
 
 3. Navrh Riešenia(20%)
 	- popis jak to bude fungovat
