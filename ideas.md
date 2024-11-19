@@ -8,28 +8,48 @@ epochs:300-500
 
 1. Uvod
 
-2. Teoria (40%)
+## 1. Úvod
 
-2.1. Detektory	
-	- Problematika v detekcii v prostore
-	- Rozdiel detekcia vs klasifikacia
-	- Modely
-	- Yolo
-	- Proc je yolo dobre
-		
-2.2 Qr kody
-	- analyza dovodu preco je detekcia mozna a jej vyhody
-	- zmysel
-2.3 Efektivnost
-	- techniky
-	- pruning (Pruning and Quantization for Deep Neural Network Acceleration: A Survey)
-	- kvantizacia (Quantisation and Pruning for Neural Network Compression and Regularisation) 
-	- ciel
+Krátky úvod do problematiky, ciele práce a význam efektívnych modelov v detekcii QR kódov.
 
-2.4 Vyber datovej sady
-	- Yolo Anotacie
-	- Vyber, hledanie
-	- Samotna anotacia
+---
+
+## 2. Teoria (40 %)
+
+### 2.1 Detektory
+- **Problematika detekcie v priestore:**
+  
+- **Rozdiel medzi detekciou a klasifikáciou:**
+  
+- **Prehľad modelov:**
+  
+- **YOLO (You Only Look Once):**
+  
+- **Výhody YOLO pre túto prácu:**
+  
+
+### 2.2 QR kódy
+- **Analýza dôvodov detekcie QR kódov:**
+  - Vysvetlenie vlastností QR kódov (kontrast, geometria)
+- **Zmysel a výhody detekcie:**
+  
+
+### 2.3 Efektívnosť modelov
+- **Techniky na zlepšenie efektívnosti:**
+- **Pruning:**
+  - (*Pruning and Quantization for Deep Neural Network Acceleration*)
+- **Kvantizácia:**
+  - (*Quantisation and Pruning for Neural Network Compression*)
+- **Cieľ efektívnosti:**
+  
+
+### 2.4 Výber dátovej sady
+- **YOLO anotácie:**
+
+- **Výber a hľadanie datasetov:**
+
+- **Proces anotácie:**
+---
 
 3. Navrh Riešenia(20%)
 	- popis jak to bude fungovat
