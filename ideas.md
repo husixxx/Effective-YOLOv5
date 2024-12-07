@@ -12,18 +12,15 @@ epochs:300-500
 
 ### 2.1 Detekcia
 - *Problematika detekcie v priestore:*
-  
-- *?Rozdiel medzi detekciou a klasifikáciou?:**
-- 
+- *Standartne sa to riesi takto~takto*
 - *vieme urobit neuronove site detektovat spojene s detekciou vyriesit*
-- 
-- **Tieto detektory:**
-
+- *?Rozdiel medzi detekciou a klasifikáciou?:*
+- ## 2.2 Tieto detektory:
 - (Timeline vyvoja),  články
 - Ako sa zlepsovali a kam sa uberali
 - Popis detektorov
 - 
-### 2.2 QR kódy
+### 2.3 QR kódy
 - **Jak sa to riesia tieto problemy pre QR kody**
 - *Vyvyjalo sa to tak*
 - *Vychadza/lo z tohto... *
@@ -32,7 +29,7 @@ epochs:300-500
 - *Vybrany detektor yolo*
   
 
-### 2.3 Efektívnosť
+### 2.4 Efektívnosť
 - *Techniky na zlepšenie efektívnosti:*
 - *Pruning:*
 - *Kvantizácia:*
