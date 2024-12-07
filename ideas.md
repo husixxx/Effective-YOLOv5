@@ -10,48 +10,52 @@ epochs:300-500
 
 ## 2. Teoria (40 %)
 
-### 2.1 Detektory
-- **Problematika detekcie v priestore:**
+### 2.1 Detekcia
+- *Problematika detekcie v priestore:*
   
-- **Rozdiel medzi detekciou a klasifikáciou:**
-  
-- **Prehľad modelov:**
-  
-- **YOLO (You Only Look Once):**
-  
-- **Výhody YOLO pre túto prácu:**
-  
+- *?Rozdiel medzi detekciou a klasifikáciou?:**
+- 
+- *vieme urobit neuronove site detektovat spojene s detekciou vyriesit*
+- 
+- **Tieto detektory:**
 
+- (Timeline vyvoja),  články
+- Ako sa zlepsovali a kam sa uberali
+- Popis detektorov
+- 
 ### 2.2 QR kódy
-- **Analýza dôvodov detekcie QR kódov:**
-- **Zmysel a výhody detekcie:**
+- **Jak sa to riesia tieto problemy pre QR kody**
+- *Vyvyjalo sa to tak*
+- *Vychadza/lo z tohto... *
+- *Aplikuje sa toto..*
+- **nejaky zmysel a vyhody?**
+- *Vybrany detektor yolo*
   
 
-### 2.3 Efektívnosť modelov
-- **Techniky na zlepšenie efektívnosti:**
-- **Pruning:**
-  - (*Pruning and Quantization for Deep Neural Network Acceleration*)
-- **Kvantizácia:**
-  - (*Quantisation and Pruning for Neural Network Compression*)
-- **Cieľ efektívnosti:**
-  
+### 2.3 Efektívnosť
+- *Techniky na zlepšenie efektívnosti:*
+- *Pruning:*
+- *Kvantizácia:*
+- *Cieľ efektívnosti:*
 
-### 2.4 Výber dátovej sady
-- **YOLO anotácie:**
-
-- **Výber a hľadanie datasetov:**
-
-- **Proces anotácie:**
----
-
-3. Navrh Riešenia(20%)
+## 3. Navrh Riešenia(20%)
+   	- principy prejkst
+   	- teoria state of the art
+   	- akesu data ktore chcem pouzivat
+   	- treba dobre opisať, čo idem robiť.
 	- popis jak to bude fungovat
+ 	- Spisane znalosti co boli treba aby sme to dosiahli (dosiahel doteraz?).
+	- Co sem s danyma znalostama spravil a spravit?, chcem vyskusat este
+	- čo som dosiahol? 
 	- Trening Yolo model na datovej sade
 	- Vybrane pruninig metody ktere skusim 		aplikovat
-	- Kvantizacia?
-	- ....
+	
+  	
 
-4. Realizácia/Implementacia Experimenty (40%) 
+
+
+
+5. Realizácia/Implementacia Experimenty (40%) 
 	- Popis teho modelu/treningu
 	- Treninig sophie
 	- Pocet parametru a treningu
