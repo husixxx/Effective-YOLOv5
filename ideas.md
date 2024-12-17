@@ -10,17 +10,17 @@ epochs:300-500
 
 ## 2. Teoria (40 %)
 
-### 2.1 Detekcia
+### 2. Detekcia
 - *Problematika detekcie v priestore:*
 - *Standartne sa to riesi takto~takto*
 - *vieme urobit neuronove site detektovat spojene s detekciou vyriesit*
 - *?Rozdiel medzi detekciou a klasifikáciou?:*
-- ## 2.2 Tieto detektory:
+- ## 2.1 / 3. Tieto detektory:
 - (Timeline vyvoja),  články
 - Ako sa zlepsovali a kam sa uberali
 - Popis detektorov
 - 
-### 2.3 QR kódy
+### 2.3 QR kódy (Asi ne)
 - **Jak sa to riesia tieto problemy pre QR kody**
 - *Vyvyjalo sa to tak*
 - *Vychadza/lo z tohto... *
@@ -28,14 +28,13 @@ epochs:300-500
 - **nejaky zmysel a vyhody?**
 - *Vybrany detektor yolo*
   
-
-### 2.4 Efektívnosť
+### 2.2 / 3 / 4? asi 3. Efektívnosť (Iny nazev) / vlastna kapitola?
 - *Techniky na zlepšenie efektívnosti:*
 - *Pruning:*
 - *Kvantizácia:*
 - *Cieľ efektívnosti:*
 
-## 3. Navrh Riešenia(20%)
+## 3... Navrh Riešenia(20%)
    	- principy prejkst
    	- teoria state of the art
    	- akesu data ktore chcem pouzivat
