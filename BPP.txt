@@ -5,8 +5,9 @@
 		2.1.1 Jednostupnove
 		2.1.2 Dvojstupnove
 	2.2 Efektivnost?
-		2.2.1 Pruning...
-		2.2.2 Kvantizacia..
+		2.2.1 CNN?
+		2.2.2 Pruning...
+		2.2.3 Kvantizacia..
 	2.3 Qr kody?? 
 	2.4 Metriky pre vyhodnocovanie detekcie/efektivnost?
 3. Navrh riešenia?
