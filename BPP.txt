@@ -1,6 +1,6 @@
 1. Uvod
 2. (Efektivna) Detekcia objektov?
-	~~~~ Qr kody??
+	Tradicne metody , (cnn?) ~~~~ Qr kody??
 	2.1 Detektory
 		2.1.1 Jednostupnove
 		2.1.2 Dvojstupnove
