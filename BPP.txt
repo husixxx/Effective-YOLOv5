@@ -1,14 +1,16 @@
 1. Uvod
-2. (Efektivna) Detekcia objektov?
-	Tradicne metody , (cnn?) ~~~~ Qr kody??
-	2.1 Detektory
+2. (Efektivna) Detekcia objektov/qrkodov?
+	2.1 Problem detekcie qr kodov? // Alebo to nechat v uvode tejto kapitoly?
+		Qr kody? (rozne problemy pri detekcii/ augmentacia)
+		Tradicne metody, (prisposobene ku qrkodu)
+		CNN + cnn detekcia
+	2.2 Detektory
 		2.1.1 Jednostupnove
 		2.1.2 Dvojstupnove
-	2.2 Efektivnost?
+	2.3 Efektivnost?
 		2.2.1 CNN?
 		2.2.2 Pruning...
 		2.2.3 Kvantizacia..
-	2.3 Qr kody?? 
 	2.4 Metriky pre vyhodnocovanie detekcie/efektivnost?
 3. Navrh riešenia?
 	3.1 Použite metody
