@@ -18,6 +18,29 @@
 	3.2 Vytvorenie datovej sady
 	3.3 Navrh systemu
 
+1. Uvod
+2. Qr kody
+	2.1 Co to je, vyuzitie....
+	2.2 Problemy spojene s detekciou qr (augmentacia)
+	2.3 Preco su qr kody relevantne pre detekciu
+3. Detekcia
+	Co je to detekcia ako proces, ciele, vystupy, tradicne postupy(pred cnn)
+	Aplikacia tradicnych postupov, graficky?
+	3.1 CNN?
+	3.2 Detektory
+		3.2.1 Jednostupnove
+		3.2.2 Dvojstupnove
+4. Efektivnost?
+	4.1 Pruning
+	4.2 Kvantizacia a binarizacia
+	4.3 Matice .....
+5. Navrh Riesenia
+6. Implementacia
+7. Experimenty
+	
+
+
+
 4. Implementácia
 	//
 5. Experimenty	
