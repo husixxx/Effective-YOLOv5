@@ -1,9 +1,10 @@
 1. Uvod
 2. (Efektivna) Detekcia objektov/qrkodov?
+	Co je to detekcia ako proces, ciele, vystupy, tradicne postupy(pred cnn)
 	2.1 Problem detekcie qr kodov? // Alebo to nechat v uvode tejto kapitoly?
 		Qr kody? (rozne problemy pri detekcii/ augmentacia)
-		Tradicne metody, (prisposobene ku qrkodu)
-		CNN + cnn detekcia
+		(Graficke) zobrazenie aplikacie tradicnych metod na detekciu qr?, (prisposobene ku qrkodu)
+		CNN + cnn detekcia ?
 	2.2 Detektory
 		2.1.1 Jednostupnove
 		2.1.2 Dvojstupnove
