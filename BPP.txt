@@ -1,45 +1,46 @@
-Issues:
-	(Kam zakomponovat bounding boxe ? v yolo) ci 2. alebo 4.
 1. Uvod
+2. (Efektivna) Detekcia objektov/qrkodov?
+	Co je to detekcia ako proces, ciele, vystupy, tradicne postupy(pred cnn)
+	2.1 Problem detekcie qr kodov? // Alebo to nechat v uvode tejto kapitoly?
+		Qr kody? (rozne problemy pri detekcii/ augmentacia)
+		(Graficke) zobrazenie aplikacie tradicnych metod na detekciu qr?, (prisposobene ku qrkodu)
+		CNN + cnn detekcia ?
+	2.2 Detektory
+		2.1.1 Jednostupnove
+		2.1.2 Dvojstupnove
+	2.3 Efektivnost?
+		2.2.1 CNN?
+		2.2.2 Pruning...
+		2.2.3 Kvantizacia..
+	2.4 Metriky pre vyhodnocovanie detekcie/efektivnost?
+3. Navrh riešenia?
+	3.1 Použite metody
+	3.2 Vytvorenie datovej sady
+	3.3 Navrh systemu
 
-2. QR Kody a Detektory	
- 	- Problematika v detekcii v prostore
-	- Zname modely
-	- Yolo
-	- Proc je yolo dobre
-	- Proc sem vybral yolo
-
-3. Metody pro neural pruning a kvantizaci?( Mrda vzorcu ) / Metody pro efektivnost ?
-	- Co to je pruning ( Mrda vzorcu )
-	- Jaky su spusoby pruningu
-	- Proc je yolo dobre na pruning
-	- Jak sa experimentuje s pruningem
-	- Kvantizace ?
-
-4. Navrh Riešenia
-	- Trening Yolo model na datovej sade
-	- Popis teho modelu/treningu
-	- Vybrane pruninig metody ktere skusim aplikovat
-	- Kvantizacia?
-	- ....
-
-5. Vyber datovej sady
-	- Yolo Anotacie
-	- Vyber, hledanie
-	- Samotna anotacia
-
-6. Implementácia samotná
-	- Treninig sophie
-	- Pocet parametru a treningu
-	- Pruning 
-	- Kvantizace
-	- Pytorch
-
-?. Výsledky? Porovnanie modelov? Vysledky Pruningu/Kvantizacie? Experiment alebo implementacia?
-
-7 Experimenty
-	-  Vyber konkretneho pruningu 
-	-  Vyhodonoteni vah pro pouzivani
-	-  Synteticka datova sada?
-	-  Kvantizacia
+1. Uvod
+2. Qr kody
+	2.1 Co to je, vyuzitie....
+	2.2 Problemy spojene s detekciou qr (augmentacia)
+	2.3 Preco su qr kody relevantne pre detekciu
+3. Detekcia
+	Co je to detekcia ako proces, ciele, vystupy, tradicne postupy(pred cnn)
+	Aplikacia tradicnych postupov, graficky?
+	3.1 CNN?
+	3.2 Detektory
+		3.2.1 Jednostupnove
+		3.2.2 Dvojstupnove
+4. Efektivnost?
+	4.1 Pruning
+	4.2 Kvantizacia a binarizacia
+	4.3 Matice .....
+5. Navrh Riesenia
+6. Implementacia
+7. Experimenty
 	
+
+
+
+4. Implementácia
+	//
+5. Experimenty	
