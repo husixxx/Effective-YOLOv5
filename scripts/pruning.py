@@ -26,36 +26,36 @@ from models.yolo import Model, Detect
 
 def load_model(cfg_path, weights_path):
     """
-    Načíta YOLOv5 model a spočíta jeho parametre.
+    Load model.
     Args:
-        cfg_path: Cesta k yaml súboru architektúry.
-        weights_path: Cesta k váham modelu (checkpoint).
+        cfg_path: Yaml file with architecture.
+        weights_path: Model weights.
     Returns:
         model: YOLOv5 model.
     """
     device = "cuda"
 
-    # Načíta checkpoint
+    # Load checkpoint
     checkpoint = torch.load(weights_path, map_location="cpu")
-    # Skontroluje, či checkpoint obsahuje celú triedu modelu alebo iba state_dict
+    
     if isinstance(checkpoint, dict) and "model" in checkpoint:
-        state_dict = checkpoint["model"].state_dict()  # Extrahuj state_dict z checkpointu
-    elif isinstance(checkpoint, Model):  # Celý model bol uložený
-        state_dict = checkpoint.state_dict()  # Extrahuj state_dict priamo z modelu
+        state_dict = checkpoint["model"].state_dict() 
+    elif isinstance(checkpoint, Model):  # Whole model is stored
+        state_dict = checkpoint.state_dict()  
     else:
         raise ValueError("Checkpoint does not contain a valid YOLOv5 model or state_dict.")
 
-    # Inicializuje model podľa architektúry
+    # Initialize model
     model = Model(cfg_path).to(device)
 
-    # Načíta váhy do modelu
+    # Load weights
     model.load_state_dict(state_dict)
     
     
-    # Nastaví model na eval režim
+    # Evaluation mode
     model.eval()
 
-    # Spočíta parametre
+    # Return number of params
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
