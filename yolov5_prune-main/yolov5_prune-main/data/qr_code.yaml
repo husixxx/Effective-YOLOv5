@@ -1,0 +1,9 @@
+# QR Code Detection Dataset Configuration
+# train: /path/to/dataset/images/train/  # cesta k trénovacím obrázkom
+val: ../../datasets/val/
+train: ../../datasets/train/
+# test: /path/to/dataset/images/test/    # voliteľné, ak máš testovací dataset
+
+nc: 1  # Počet tried (1 ak detekuješ len QR kódy)
+names: ['QR_code']  # Názov triedy
+
