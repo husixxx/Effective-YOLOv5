@@ -278,7 +278,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     maps = np.zeros(nc)  # mAP per class
     results = (0, 0, 0, 0, 0, 0, 0)  # P, R, mAP@.5, mAP@.5-.95, val_loss(box, obj, cls)
     scheduler.last_epoch = start_epoch - 1  # do not move
-    scaler = amp.GradScaler(enabled=cuda)
+    scaler = torch.GradScaler()
     stopper = EarlyStopping(patience=opt.patience)
     compute_loss = ComputeLoss(model)  # init loss class
     LOGGER.info(f'Image sizes {imgsz} train, {imgsz} val\n'
@@ -365,7 +365,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
 
             else:
                 # Forward
-                with amp.autocast(enabled=cuda):
+                with torch.autocast(device_type='cuda' if cuda else 'cpu'):
                     pred = model(imgs)  # forward
                     loss, loss_items = compute_loss(pred, targets.to(device))  # loss scaled by batch_size
                     if RANK != -1:

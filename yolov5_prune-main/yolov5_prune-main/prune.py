@@ -113,8 +113,20 @@ def prune(data,
     # prune model end
 
     debug_layer_channels(pruned_model, "AFTER PRUNING")
+    # Remove all hooks before saving
+    for module in pruned_model.modules():
+        if hasattr(module, '_forward_hooks'):
+            module._forward_hooks.clear()
+        if hasattr(module, '_backward_hooks'):
+            module._backward_hooks.clear()
+            
     torch.save({'model': deepcopy(de_parallel(pruned_model)).half(), }, "pruned_model.pt")
-    pruned_model.cuda().eval()
+    # pruned_model = pruned_model.half() if half else pruned_model.float()
+
+    # # OR: Convert to full precision
+    # # pruned_model = pruned_model.float()  
+
+    # pruned_model.cuda().eval()
     is_coco = isinstance(data.get('val'), str) and data['val'].endswith('coco/val2017.txt')  # COCO dataset
 
     # Dataloader

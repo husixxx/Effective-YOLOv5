@@ -50,10 +50,26 @@ class Detect(nn.Module):
     def forward(self, x):
         z = []  # inference output
         for i in range(self.nl):
+            # Add channel dimension adaptation for each detection head
+            if isinstance(x[i], torch.Tensor) and x[i].shape[1] != self.m[i].weight.shape[1]:
+                print(f"Detect mismatch at head {i}: input={x[i].shape[1]}, expected={self.m[i].weight.shape[1]}")
+                if x[i].shape[1] < self.m[i].weight.shape[1]:
+                    # Pad if input has fewer channels
+                    padding = torch.zeros(x[i].shape[0],
+                                        self.m[i].weight.shape[1] - x[i].shape[1],
+                                        x[i].shape[2],
+                                        x[i].shape[3],
+                                        device=x[i].device)
+                    x[i] = torch.cat([x[i], padding], dim=1)
+                else:
+                    # Truncate if input has more channels
+                    x[i] = x[i][:, :self.m[i].weight.shape[1], :, :]
+                    
             x[i] = self.m[i](x[i])  # conv
             bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85)
             x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
 
+            # Rest of original code remains unchanged
             if not self.training:  # inference
                 if self.onnx_dynamic or self.grid[i].shape[2:4] != x[i].shape[2:4]:
                     self.grid[i], self.anchor_grid[i] = self._make_grid(nx, ny, i)
@@ -62,7 +78,7 @@ class Detect(nn.Module):
                 if self.inplace:
                     y[..., 0:2] = (y[..., 0:2] * 2 - 0.5 + self.grid[i]) * self.stride[i]  # xy
                     y[..., 2:4] = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
-                else:  # for YOLOv5 on AWS Inferentia https://github.com/ultralytics/yolov5/pull/2953
+                else:
                     xy = (y[..., 0:2] * 2 - 0.5 + self.grid[i]) * self.stride[i]  # xy
                     wh = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]  # wh
                     y = torch.cat((xy, wh, y[..., 4:]), -1)
@@ -349,304 +365,99 @@ def parse_pruned_model(mask_bn, d, ch):  # model_dict, input_channels(3)
             return None
         
         if m in [Conv]:
-            # Try different possible BN layer naming patterns
-            named_m_bn = get_bn_layer(named_m_base, [".bn", ".conv.bn"])
-            
-            if not named_m_bn:
-                LOGGER.warning(f"Skipping pruning for layer {named_m_base} (Conv), BN layer not found")
-                # Handle the case when BN layer is not found - use the original width
-                c1, c2 = ch[f], args[0] if args else ch[f]
-                if c2 != no:  # if not output
-                    c2 = make_divisible(c2 * gw, 8)
-            else:
-                # Normal processing when BN layer is found
-                bnc = int(mask_bn[named_m_bn].sum())
-                c1, c2 = ch[f], bnc
-                args = [c1, c2, *args[1:]]
-                
-                if i > 0:
-                    from_to_map[named_m_bn] = fromlayer[f]
-                fromlayer.append(named_m_bn)
+            named_m_bn = named_m_base + ".bn"
+
+            bnc = int(mask_bn[named_m_bn].sum())
+            c1, c2 = ch[f], bnc
+            args = [c1, c2, *args[1:]]
+            layertmp = named_m_bn
+            if i > 0:
+                from_to_map[layertmp] = fromlayer[f]
+            fromlayer.append(named_m_bn)
 
         elif m in [C3Pruned]:
-            named_m_cv1_bn = get_bn_layer(named_m_base, [".cv1.bn"])
-            named_m_cv2_bn = get_bn_layer(named_m_base, [".cv2.bn"])
-            named_m_cv3_bn = get_bn_layer(named_m_base, [".cv3.bn"])
-            
-            # Special handling for problematic layers based on index
-            is_problematic_layer = named_m_base in ["model.2", "model.17", "model.21", "model.24"]
-            after_bifpn = False
-            
-            # Check if this C3 comes after a BiFPN layer (which causes dimension issues)
-            if i > 0 and i < len(d['backbone'] + d['head']) and \
-            (d['backbone'] + d['head'])[i-1][2] in ["BiFPN_Concat2", "BiFPN_Concat3"]:
-                after_bifpn = True
-                LOGGER.warning(f"C3Pruned after BiFPN at {named_m_base}: Special handling needed")
-            
-            if not named_m_cv1_bn or not named_m_cv2_bn or not named_m_cv3_bn:
-                LOGGER.warning(f"Skipping pruning for layer {named_m_base} (C3Pruned), some BN layers not found")
-                c2 = ch[f]
-                fromlayer.append(fromlayer[-1] if fromlayer else "")
-            elif after_bifpn or is_problematic_layer:
-                # Special handling for layers after BiFPN or known problematic layers
-                LOGGER.warning(f"Using special conservative pruning for {named_m_base}")
-                
-                # Get input channels from previous layer
-                cv1in = ch[f]
-                
-                # More conservative channel reduction for these critical layers
-                cv1out = max(8, (cv1in * 2 // 3 + 7) // 8 * 8)  # ~2/3 of input channels
-                cv2out = cv1out  # Same dimension for cv2
-                cv3out = cv1in   # Output matches input for stability
-                
-                # Set channel mappings
-                from_to_map[named_m_cv1_bn] = fromlayer[f]
-                from_to_map[named_m_cv2_bn] = fromlayer[f]  # Connect directly to input
-                fromlayer.append(named_m_cv3_bn)
-                
-                # Create consistent bottleneck dimensions
-                bottle_args = []
-                chin = [cv1out]  # Input to first bottleneck
-                
-                c3fromlayer = [named_m_cv1_bn]
-                
-                # Create bottleneck with consistent dimensions
-                for p in range(n):
-                    bottle_cv1in = chin[-1]
-                    bottle_cv1out = bottle_cv1in  # 1:1 ratio for stable bottleneck
-                    bottle_cv2out = bottle_cv1in
-                    
-                    # Record actual BN layers if they exist (for weight transfer)
-                    named_m_bottle_cv1_bn = get_bn_layer(f"{named_m_base}.m.{p}", [".cv1.bn"])
-                    named_m_bottle_cv2_bn = get_bn_layer(f"{named_m_base}.m.{p}", [".cv2.bn"])
-                    
-                    if named_m_bottle_cv1_bn and named_m_bottle_cv2_bn:
-                        from_to_map[named_m_bottle_cv1_bn] = c3fromlayer[p]
-                        from_to_map[named_m_bottle_cv2_bn] = named_m_bottle_cv1_bn
-                        
-                    chin.append(bottle_cv2out)
-                    bottle_args.append([bottle_cv1in, bottle_cv1out, bottle_cv2out])
-                    c3fromlayer.append(named_m_bottle_cv2_bn if named_m_bottle_cv2_bn else c3fromlayer[-1])
-                    
-                    LOGGER.info(f"Bottleneck {named_m_base}.m.{p}: in={bottle_cv1in}, mid={bottle_cv1out}, out={bottle_cv2out}")
-                
-                # Set final arguments for C3Pruned
-                args = [cv1in, cv1out, cv2out, cv3out, n, args[-1]]
-                args.insert(4, bottle_args)
-                c2 = cv3out
-                n = 1
-                
-            else:
-                # Standard handling for normal C3Pruned layers
-                from_to_map[named_m_cv1_bn] = fromlayer[f]
-                from_to_map[named_m_cv2_bn] = fromlayer[f]  # Connect directly to input, not cv1
-                fromlayer.append(named_m_cv3_bn)
+            named_m_cv1_bn = named_m_base + ".cv1.bn"
+            named_m_cv2_bn = named_m_base + ".cv2.bn"
+            named_m_cv3_bn = named_m_base + ".cv3.bn"
+            from_to_map[named_m_cv1_bn] = fromlayer[f]
+            from_to_map[named_m_cv2_bn] = fromlayer[f]
+            fromlayer.append(named_m_cv3_bn)
 
-                # Get channel counts from masks
-                cv1in = ch[f]
-                cv1out = int(mask_bn[named_m_cv1_bn].sum())
-                cv2out = int(mask_bn[named_m_cv2_bn].sum())
-                cv3out = int(mask_bn[named_m_cv3_bn].sum())
-                
-                # Round to multiples of 8 for better hardware efficiency
-                cv1out = max(8, (cv1out + 7) // 8 * 8)
-                cv2out = max(8, (cv2out + 7) // 8 * 8)
-                cv3out = max(8, (cv3out + 7) // 8 * 8)
-                
-                # Debug output
-                LOGGER.info(f"C3Pruned {named_m_base}: in={cv1in}, cv1={cv1out}, cv2={cv2out}, cv3={cv3out}")
-                
-                # Process bottleneck layers
-                bottle_args = []
-                chin = [cv1out]  # Input to bottleneck is output from cv1
-                
-                c3fromlayer = [named_m_cv1_bn]
-                for p in range(n):
-                    named_m_bottle_cv1_bn = get_bn_layer(f"{named_m_base}.m.{p}", [".cv1.bn"])
-                    named_m_bottle_cv2_bn = get_bn_layer(f"{named_m_base}.m.{p}", [".cv2.bn"])
-                    
-                    bottle_cv1in = chin[-1]  # Must match previous output
-                    
-                    if not named_m_bottle_cv1_bn or not named_m_bottle_cv2_bn:
-                        # Use same channel dimensions throughout bottleneck
-                        bottle_cv1out = bottle_cv1in
-                        bottle_cv2out = bottle_cv1in
-                    else:
-                        # Use pruned dimensions but ensure they're valid
-                        bottle_cv1out = int(mask_bn[named_m_bottle_cv1_bn].sum())
-                        bottle_cv2out = int(mask_bn[named_m_bottle_cv2_bn].sum())
-                        
-                        # For model.2 specifically, force matching dimensions
-                        if named_m_base == "model.2":
-                            bottle_cv1out = bottle_cv1in
-                            bottle_cv2out = bottle_cv1in
-                        
-                        # Always ensure dimensions are multiples of 8
-                        bottle_cv1out = max(8, (bottle_cv1out + 7) // 8 * 8)
-                        bottle_cv2out = max(8, (bottle_cv2out + 7) // 8 * 8)
-                        
-                        from_to_map[named_m_bottle_cv1_bn] = c3fromlayer[p]
-                        from_to_map[named_m_bottle_cv2_bn] = named_m_bottle_cv1_bn
-                    
-                    # Log dimensions
-                    LOGGER.info(f"Bottleneck {named_m_base}.m.{p}: in={bottle_cv1in}, mid={bottle_cv1out}, out={bottle_cv2out}")
-                    
-                    # Add this layer's output to chin for next layer's input
-                    chin.append(bottle_cv2out)
-                    bottle_args.append([bottle_cv1in, bottle_cv1out, bottle_cv2out])
-                    c3fromlayer.append(named_m_bottle_cv2_bn if named_m_bottle_cv2_bn else c3fromlayer[-1])
-                
-                # Set C3Pruned arguments
-                args = [cv1in, cv1out, cv2out, cv3out, n, args[-1]]
-                args.insert(4, bottle_args)
-                c2 = cv3out
-                n = 1
+            cv1in = ch[f]
+            cv1out = int(mask_bn[named_m_cv1_bn].sum())
+            cv2out = int(mask_bn[named_m_cv2_bn].sum())
+            cv3out = int(mask_bn[named_m_cv3_bn].sum())
+            args = [cv1in, cv1out, cv2out, cv3out, n, args[-1]]
+            bottle_args = []
+            chin = [cv1out]
+
+            c3fromlayer = [named_m_cv1_bn]
+            for p in range(n):
+                named_m_bottle_cv1_bn = named_m_base + ".m.{}.cv1.bn".format(p)
+                named_m_bottle_cv2_bn = named_m_base + ".m.{}.cv2.bn".format(p)
+                bottle_cv1in = chin[-1]
+                bottle_cv1out = int(mask_bn[named_m_bottle_cv1_bn].sum())
+                bottle_cv2out = int(mask_bn[named_m_bottle_cv2_bn].sum())
+                chin.append(bottle_cv2out)
+                bottle_args.append([bottle_cv1in, bottle_cv1out, bottle_cv2out])
+                from_to_map[named_m_bottle_cv1_bn] = c3fromlayer[p]
+                from_to_map[named_m_bottle_cv2_bn] = named_m_bottle_cv1_bn
+                c3fromlayer.append(named_m_bottle_cv2_bn)
+            args.insert(4, bottle_args)
+            c2 = cv3out
+            n = 1
+            from_to_map[named_m_cv3_bn] = [c3fromlayer[-1], named_m_cv2_bn]
                 
 
         elif m in [SPPFPruned]:
-            named_m_cv1_bn = get_bn_layer(named_m_base, [".cv1.bn"])
-            named_m_cv2_bn = get_bn_layer(named_m_base, [".cv2.bn"])
-            
-            if not named_m_cv1_bn or not named_m_cv2_bn:
-                LOGGER.warning(f"Skipping pruning for layer {named_m_base} (SPPFPruned), some BN layers not found")
-                c2 = ch[f]
-                fromlayer.append(fromlayer[-1] if fromlayer else "")
-            else:
-                cv1in = ch[f]
-                from_to_map[named_m_cv1_bn] = fromlayer[f]
-                from_to_map[named_m_cv2_bn] = [named_m_cv1_bn] * 4
-                fromlayer.append(named_m_cv2_bn)
-                cv1out = int(mask_bn[named_m_cv1_bn].sum())
-                cv2out = int(mask_bn[named_m_cv2_bn].sum())
-                args = [cv1in, cv1out, cv2out, *args[1:]]
-                c2 = cv2out
+            named_m_cv1_bn = named_m_base + ".cv1.bn"
+            named_m_cv2_bn = named_m_base + ".cv2.bn"
+            cv1in = ch[f]
+            from_to_map[named_m_cv1_bn] = fromlayer[f]
+            from_to_map[named_m_cv2_bn] = [named_m_cv1_bn] * 4
+            fromlayer.append(named_m_cv2_bn)
+            cv1out = int(mask_bn[named_m_cv1_bn].sum())
+            cv2out = int(mask_bn[named_m_cv2_bn].sum())
+            args = [cv1in, cv1out, cv2out, *args[1:]]
+            c2 = cv2out
 
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
-        elif m in {ECALayer}:
-            args = [ch[f]]  
-            n = 1
+        # elif m in {ECALayer}:
+        #     # c2 = sum(ch[x] for x in f)
+        #     args = [ch[f]]
+        #     fromlayer.append(f"model.{i}")
+              
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
             inputtmp = [fromlayer[x] for x in f]
             fromlayer.append(inputtmp)
         elif m is Detect:
-            # Safely map detect layer inputs
-            if len(f) > 0 and f[0] < len(fromlayer):
-                from_to_map[named_m_base + ".m.0"] = fromlayer[f[0]]
-            if len(f) > 1 and f[1] < len(fromlayer):
-                from_to_map[named_m_base + ".m.1"] = fromlayer[f[1]]
-            if len(f) > 2 and f[2] < len(fromlayer):
-                from_to_map[named_m_base + ".m.2"] = fromlayer[f[2]]
             
+            # for i, detect_idx in enumerate(f):
+            # #     # Try to find exact C3 cv3.bn layer by name
+            #     target_name = f"model.{detect_idx}.cv3.bn"
+                
+                
+            # #     for layer_idx, layer in enumerate(fromlayer):
+            # #         # Look for exact name first
+            # #         if isinstance(layer, str) and layer == target_name:
+            # #             print(f"Connecting detection head {i} to {layer} (exact match)")
+            # #             # from_to_map[named_m_base + f".m.{i}"] = layer
+            # #             break
+            print(fromlayer)
+            from_to_map[named_m_base + ".m.0"] = fromlayer[f[0]]
+            from_to_map[named_m_base + ".m.1"] = fromlayer[f[1]]
+            from_to_map[named_m_base + ".m.2"] = fromlayer[f[2]]
             args.append([ch[x] for x in f])
-            if isinstance(args[1], int):
+            if isinstance(args[1], int):  # number of anchors
                 args[1] = [list(range(args[1] * 2))] * len(f)
         elif m is Contract:
             c2 = ch[f] * args[0] ** 2
         elif m in [BiFPN_Concat2, BiFPN_Concat3]:
-    # Create BiFPN module with dimension adaptation
-            bifpn = BiFPN_Concat2() if m is BiFPN_Concat2 else BiFPN_Concat3()
-            
-            # Detailed source layer tracking
-            input_layers = []
-            expected_channels = []
-            base_channels = []
-            
-            # Track all possible layer dimensions for detailed diagnostics
-            LOGGER.info(f"\n===== {named_m_base} ({m.__name__}) SOURCE LAYER ANALYSIS =====")
-            for idx, x in enumerate(f):
-                if x < len(ch):
-                    base_ch = ch[x]
-                    expected_ch = base_ch
-                    base_channels.append(base_ch)
-                    expected_channels.append(expected_ch)
-                    input_layers.append(x)
-                    
-                    # Get more context about the source layer
-                    src_layer_type = d['backbone'][x][2] if x < len(d['backbone']) else d['head'][x-len(d['backbone'])][2] if x-len(d['backbone']) < len(d['head']) else "unknown"
-                    
-                    # Add detailed information about this input source
-                    LOGGER.info(f"  Input {idx}: Layer {x} ({src_layer_type}) → Base channels: {base_ch}, Expected: {expected_ch}")
-                    
-                    # Check for potential issues with source layer
-                    if x > i:
-                        LOGGER.warning(f"  ⚠️ Input {idx}: References future layer {x} (current: {i})")
-            
-            # Log raw total vs calculated conservative estimate
-            raw_total = sum(expected_channels)
-            LOGGER.info(f"  Raw channel total: {raw_total}")
-            
-            # For robustness, calculate output channels conservatively
-            # This ensures C3 layers that follow will have correct dimensions
-            conservative_estimate = 0
-            for x in f:
-                if x < len(ch):
-                    # Add a safety margin to prevent channel mismatches
-                    safety_margin = 32 if ch[x] > 100 else 16
-                    conservative_estimate += ch[x] + safety_margin
-                    LOGGER.info(f"  Layer {x}: {ch[x]} channels + {safety_margin} safety margin")
-            
-            # Store the original estimate for reference
-            original_estimate = sum(expected_channels)
-            
-            # Use the conservative estimate for downstream layers
-            c2 = conservative_estimate
-            
-            # Log the discrepancy between original and conservative estimates
-            percent_increase = ((conservative_estimate - original_estimate) / original_estimate) * 100 if original_estimate > 0 else 0
-            LOGGER.info(f"  Conservative estimate: {conservative_estimate} channels (+{percent_increase:.1f}% buffer)")
-            
-            # Store the expected channel info on the module for runtime verification
-            bifpn.expected_channels = c2
-            bifpn.source_indices = f
-            bifpn.input_channel_estimates = expected_channels
-            bifpn.named_base = named_m_base
-            
-            # Add a hook for runtime channel verification
-            def verify_channels_hook(module, inputs, output):
-                input_shapes = [inp.shape for inp in inputs[0]]
-                actual_channels = [shape[1] for shape in input_shapes]
-                total_channels = sum(actual_channels)
-                
-                # Log detailed comparison
-                LOGGER.info(f"\n===== RUNTIME CHANNEL VERIFICATION: {module.named_base} =====")
-                LOGGER.info(f"  Expected inputs: {module.input_channel_estimates}")
-                LOGGER.info(f"  Actual inputs: {actual_channels}")
-                LOGGER.info(f"  Total expected: {sum(module.input_channel_estimates)}, Actual: {total_channels}")
-                
-                for idx, (expected, actual) in enumerate(zip(module.input_channel_estimates, actual_channels)):
-                    if expected != actual:
-                        src_idx = module.source_indices[idx]
-                        LOGGER.warning(f"  ⚠️ Source {idx} (layer {src_idx}): Expected {expected}, Got {actual} channels")
-                
-                if module.expected_channels != total_channels:
-                    LOGGER.warning(f"  ⚠️ Total channels mismatch: Expected {module.expected_channels}, Got {total_channels}")
-                    if hasattr(output, 'shape'):
-                        LOGGER.info(f"  Output shape: {output.shape}")
-            
-            # Register the hook
-            bifpn.register_forward_hook(verify_channels_hook)
-            
-            # Set the module arguments
-            args = [bifpn]
-            
-            # Create proper mapping for weight transfer
-            input_bns = []
-            for x in f:
-                if x < len(fromlayer):
-                    input_bns.append(fromlayer[x])
-                    # Log what we're connecting
-                    if isinstance(fromlayer[x], list):
-                        LOGGER.info(f"  Connecting from layer {x}: Multiple connections {fromlayer[x]}")
-                    else:
-                        LOGGER.info(f"  Connecting from layer {x}: {fromlayer[x]}")
-                else:
-                    input_bns.append("")
-                    LOGGER.warning(f"  Missing connection for source {x}, layer index out of range")
-            
-            fromlayer.append(input_bns)
-            LOGGER.info("=" * 60)
+            c2 = sum(ch[x] for x in f)
+            inputtmp = [fromlayer[x] for x in f]
+            fromlayer.append(inputtmp)
         elif m is Expand:
             c2 = ch[f] // args[0] ** 2
         elif m in [Focus]:

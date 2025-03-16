@@ -174,3 +174,13 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+.vscode
+data/
+data128/
+dataset/
+faildataset/
+models/
+venv/
+scripts/itt_pics/
+scripts/yolov5/

@@ -34,7 +34,6 @@ class C3Pruned(nn.Module):
     def forward(self, x):
         return self.cv3(torch.cat((self.m(self.cv1(x)), self.cv2(x)), dim=1))
 
-
 class SPPFPruned(nn.Module):
     # Spatial pyramid pooling layer used in YOLOv3-SPP
     def __init__(self, cv1in, cv1out, cv2out, k=5):
@@ -44,9 +43,23 @@ class SPPFPruned(nn.Module):
         self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
 
     def forward(self, x):
+    # Handle mismatch
+        if x.shape[1] != self.cv1.conv.weight.shape[1]:
+            print(f"SPPFPruned mismatch: {x.shape[1]} vs {self.cv1.conv.weight.shape[1]}")
+            if x.shape[1] < self.cv1.conv.weight.shape[1]:
+                padding = torch.zeros(x.shape[0],
+                                    self.cv1.conv.weight.shape[1] - x.shape[1],
+                                    x.shape[2],
+                                    x.shape[3],
+                                    device=x.device)
+                x = torch.cat([x, padding], dim=1)
+            else:
+                x = x[:, :self.cv1.conv.weight.shape[1], :, :]
+                
+        # Rest of existing code
         x = self.cv1(x)
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore')  # suppress torch 1.9.0 max_pool2d() warning
+            warnings.simplefilter('ignore')
             y1 = self.m(x)
             y2 = self.m(y1)
             return self.cv2(torch.cat([x, y1, y2, self.m(y2)], 1))

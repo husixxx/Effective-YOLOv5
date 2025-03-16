@@ -129,254 +129,73 @@ def prune_model_load_weight(model, pruned_model, mask_bn):
     from_to_map = pruned_model.from_to_map
     pruned_model_state = pruned_model.state_dict()
 
-    assert pruned_model_state.keys() == model_state.keys(), "State dictionaries must have the same keys"
-    
-    # Convert named_modules to dictionaries for easier lookup
-    model_modules = dict(model.named_modules())
-    pruned_model_modules = dict(pruned_model.named_modules())
-    
-    # Add missing mappings for Detect layer
-    if "model.28.m.0" in pruned_model_modules and "model.28.m.0" not in from_to_map:
-        if "model.21.cv3.bn" in mask_bn:
-            from_to_map["model.28.m.0"] = "model.21.cv3.bn"
-    if "model.28.m.1" in pruned_model_modules and "model.28.m.1" not in from_to_map:
-        if "model.24.cv3.bn" in mask_bn:
-            from_to_map["model.28.m.1"] = "model.24.cv3.bn"
-    if "model.28.m.2" in pruned_model_modules and "model.28.m.2" not in from_to_map:
-        if "model.27.cv3.bn" in mask_bn:
-            from_to_map["model.28.m.2"] = "model.27.cv3.bn"
-    
+    assert pruned_model_state.keys() == model_state.keys()
     changed_state = []
-    for layername, layer in model.named_modules():
-        if layername in pruned_model_modules:
-            try:
-                pruned_layer = pruned_model_modules[layername]
-                print(f"DEBUG: Processing layer: {layername}")
-                
-                # Handle Conv2d layers (except for Detect)
-                if isinstance(layer, nn.Conv2d) and "model.28" not in layername:
-                    convname = layername[:-4] + "bn"
-                    if convname in from_to_map.keys():
-                        former = from_to_map[convname]
-                        if isinstance(former, str):
-                            if layername[:-4] + "bn" not in mask_bn or former not in mask_bn:
-                                print(f"WARNING: Mask not found for {layername[:-4] + 'bn'} or {former}")
-                                continue
-                                
-                            out_idx = np.squeeze(np.argwhere(np.asarray(
-                                mask_bn[layername[:-4] + "bn"].cpu().numpy())))
-                            in_idx = np.squeeze(np.argwhere(
-                                np.asarray(mask_bn[former].cpu().numpy())))
-                                
-                            # Safety check for empty indices
-                            if out_idx.size == 0 or in_idx.size == 0:
-                                print(f"WARNING: Empty indices for {layername}")
-                                continue
-                                
-                            # Ensure indices are within bounds
-                            if isinstance(out_idx, np.ndarray) and out_idx.size > 0:
-                                max_out_idx = out_idx.max() if out_idx.size > 0 else 0
-                                if max_out_idx >= layer.weight.shape[0]:
-                                    print(f"WARNING: out_idx too large for {layername}, truncating")
-                                    out_idx = out_idx[out_idx < layer.weight.shape[0]]
-                                    if out_idx.size == 0:
-                                        print(f"ERROR: No valid out_idx for {layername}")
-                                        continue
-                            
-                            if isinstance(in_idx, np.ndarray) and in_idx.size > 0:
-                                max_in_idx = in_idx.max() if in_idx.size > 0 else 0
-                                if max_in_idx >= layer.weight.shape[1]:
-                                    print(f"WARNING: in_idx too large for {layername}, truncating")
-                                    in_idx = in_idx[in_idx < layer.weight.shape[1]]
-                                    if in_idx.size == 0:
-                                        print(f"ERROR: No valid in_idx for {layername}")
-                                        continue
-                            
-                            # Get weights with valid indices
-                            w = layer.weight.data[:, in_idx, :, :].clone()
-                            if len(w.shape) == 3:     # remain only 1 channel
-                                w = w.unsqueeze(1)
-                            w = w[out_idx, :, :, :].clone()
+    for ((layername, layer), (pruned_layername, pruned_layer)) in zip(model.named_modules(), pruned_model.named_modules()):
+        assert layername == pruned_layername
+        if isinstance(layer, nn.Conv2d) and not layername.startswith("model.28"):
+            convname = layername[:-4] + "bn"
+            if convname in from_to_map.keys():
+                former = from_to_map[convname]
+                if isinstance(former, str):
+                    out_idx = np.squeeze(np.argwhere(np.asarray(
+                        mask_bn[layername[:-4] + "bn"].cpu().numpy())))
+                    in_idx = np.squeeze(np.argwhere(
+                        np.asarray(mask_bn[former].cpu().numpy())))
+                    
+                    w = layer.weight.data[:, in_idx, :, :].clone()
 
-                            pruned_layer.weight.data = w.clone()
-                            changed_state.append(layername + ".weight")
-                            
-                        elif isinstance(former, list):
-                            try:
-                                # Handle list of inputs (e.g. concatenation)
-                                orignin = [model_state[i + ".weight"].shape[0] if i + ".weight" in model_state else 0 for i in former]
-                                formerin = []
-                                for it in range(len(former)):
-                                    name = former[it]
-                                    if name not in mask_bn:
-                                        print(f"WARNING: Mask not found for {name}")
-                                        continue
-                                    tmp = [i for i in range(mask_bn[name].shape[0]) if mask_bn[name][i] == 1]
-                                    if it > 0:
-                                        tmp = [k + sum(orignin[:it]) for k in tmp]
-                                    formerin.extend(tmp)
-                                
-                                if not formerin:
-                                    print(f"WARNING: Empty formerin for {layername}")
-                                    continue
-                                    
-                                if layername[:-4] + "bn" not in mask_bn:
-                                    print(f"WARNING: Mask not found for {layername[:-4] + 'bn'}")
-                                    continue
-                                    
-                                out_idx = np.squeeze(np.argwhere(np.asarray(
-                                    mask_bn[layername[:-4] + "bn"].cpu().numpy())))
-                                    
-                                # Safety check
-                                if out_idx.size == 0:
-                                    print(f"WARNING: Empty out_idx for {layername}")
-                                    continue
-                                
-                                # Handle out_idx out of bounds
-                                if max(out_idx) >= layer.weight.shape[0]:
-                                    print(f"WARNING: out_idx too large for {layername}, truncating")
-                                    out_idx = out_idx[out_idx < layer.weight.shape[0]]
-                                    if out_idx.size == 0:
-                                        print(f"ERROR: No valid out_idx for {layername}")
-                                        continue
-                                
-                                w = layer.weight.data[out_idx, :, :, :].clone()
-                                
-                                # Critical fix: Truncate formerin if it's too large
-                                if formerin and max(formerin) >= w.shape[1]:
-                                    print(f"WARNING: Truncating formerin for {layername}: max={max(formerin)}, shape={w.shape}")
-                                    formerin = [idx for idx in formerin if idx < w.shape[1]]
-                                    if not formerin:  # If all indices were invalid
-                                        print(f"ERROR: All formerin indices invalid for {layername}")
-                                        continue
-                                
-                                pruned_layer.weight.data = w[:, formerin, :, :].clone()
-                                changed_state.append(layername + ".weight")
-                                
-                            except Exception as e:
-                                print(f"ERROR in list handling for {layername}: {e}")
-                                continue
-                    else:
-                        # Handle convs with no explicit connections in from_to_map
-                        if layername[:-4] + "bn" not in mask_bn:
-                            print(f"WARNING: Mask not found for {layername[:-4] + 'bn'}")
-                            continue
-                            
-                        out_idx = np.squeeze(np.argwhere(np.asarray(
-                            mask_bn[layername[:-4] + "bn"].cpu().numpy())))
-                            
-                        # Safety check
-                        if out_idx.size == 0:
-                            print(f"WARNING: Empty out_idx for {layername}")
-                            continue
-                            
-                        if max(out_idx) >= layer.weight.shape[0]:
-                            print(f"WARNING: Index out of bounds for {layername}, truncating")
-                            out_idx = out_idx[out_idx < layer.weight.shape[0]]
-                            if out_idx.size == 0:
-                                print(f"ERROR: No valid out_idx for {layername}")
-                                continue
-                            
-                        w = layer.weight.data[out_idx, :, :, :].clone()
-                        assert len(w.shape) == 4
-                        pruned_layer.weight.data = w.clone()
-                        changed_state.append(layername + ".weight")
+                    if len(w.shape) == 3:     # remain only 1 channel.
+                        w = w.unsqueeze(1)
+                    w = w[out_idx, :, :, :].clone()
 
-                # Handle BatchNorm2d layers
-                elif isinstance(layer, nn.BatchNorm2d):
-                    if layername not in mask_bn:
-                        print(f"WARNING: Mask not found for {layername}")
-                        continue
-                        
-                    out_idx = np.squeeze(np.argwhere(
-                        np.asarray(mask_bn[layername].cpu().numpy())))
-                        
-                    # Safety check
-                    if out_idx.size == 0:
-                        print(f"WARNING: Empty out_idx for {layername}")
-                        continue
-                        
-                    pruned_layer.weight.data = layer.weight.data[out_idx].clone()
-                    pruned_layer.bias.data = layer.bias.data[out_idx].clone()
-                    pruned_layer.running_mean = layer.running_mean[out_idx].clone()
-                    pruned_layer.running_var = layer.running_var[out_idx].clone()
+                    pruned_layer.weight.data = w.clone()
                     changed_state.append(layername + ".weight")
-                    changed_state.append(layername + ".bias")
-                    changed_state.append(layername + ".running_mean")
-                    changed_state.append(layername + ".running_var")
-                    changed_state.append(layername + ".num_batches_tracked")
+                if isinstance(former, list):
+                    orignin = [model_state[i + ".weight"].shape[0]
+                               for i in former]
+                    formerin = []
+                    for it in range(len(former)):
+                        name = former[it]
+                        tmp = [i for i in range(
+                            mask_bn[name].shape[0]) if mask_bn[name][i] == 1]
+                        if it > 0:
+                            tmp = [k + sum(orignin[:it]) for k in tmp]
+                        formerin.extend(tmp)
+                    out_idx = np.squeeze(np.argwhere(np.asarray(
+                        mask_bn[layername[:-4] + "bn"].cpu().numpy())))
+                    w = layer.weight.data[out_idx, :, :, :].clone()
+                    pruned_layer.weight.data = w[:, formerin, :, :].clone()
+                    changed_state.append(layername + ".weight")
+            else:
+                out_idx = np.squeeze(np.argwhere(np.asarray(
+                    mask_bn[layername[:-4] + "bn"].cpu().numpy())))
+                w = layer.weight.data[out_idx, :, :, :].clone()
+                assert len(w.shape) == 4
+                pruned_layer.weight.data = w.clone()
+                changed_state.append(layername + ".weight")
 
-                # Special handling for model.28 (Detect layer)
-                elif isinstance(layer, nn.Conv2d) and layername.startswith("model.28"):
-                    # Detect layer special handling
-                    if layername in from_to_map:
-                        former = from_to_map[layername]
-                        if former in mask_bn:
-                            in_idx = np.squeeze(np.argwhere(
-                                np.asarray(mask_bn[former].cpu().numpy())))
-                            
-                            if in_idx.size == 0:
-                                print(f"WARNING: Empty in_idx for {layername}")
-                                continue
-                            
-                            # Ensure indices are valid
-                            if max(in_idx) >= layer.weight.shape[1]:
-                                print(f"WARNING: in_idx too large for {layername}, truncating")
-                                in_idx = in_idx[in_idx < layer.weight.shape[1]]
-                                if in_idx.size == 0:
-                                    print(f"ERROR: No valid in_idx for {layername}")
-                                    continue
-                            
-                            pruned_layer.weight.data = layer.weight.data[:, in_idx, :, :].clone()
-                            if hasattr(layer, 'bias') and layer.bias is not None:
-                                pruned_layer.bias.data = layer.bias.data.clone()
-                            changed_state.append(layername + ".weight")
-                            if layer.bias is not None:
-                                changed_state.append(layername + ".bias")
-                        else:
-                            print(f"WARNING: Mask not found for former layer {former}")
-                    else:
-                        print(f"WARNING: No mapping found for {layername}")
-                        
-                        # Try to infer source connection based on naming pattern
-                        if layername == "model.28.m.0" and "model.21.cv3.bn" in mask_bn:
-                            former = "model.21.cv3.bn"
-                        elif layername == "model.28.m.1" and "model.24.cv3.bn" in mask_bn:
-                            former = "model.24.cv3.bn"
-                        elif layername == "model.28.m.2" and "model.27.cv3.bn" in mask_bn:
-                            former = "model.27.cv3.bn"
-                        else:
-                            continue
-                            
-                        print(f"INFO: Inferred mapping for {layername} -> {former}")
-                        
-                        in_idx = np.squeeze(np.argwhere(
-                            np.asarray(mask_bn[former].cpu().numpy())))
-                        
-                        if in_idx.size == 0:
-                            print(f"WARNING: Empty in_idx for {layername}")
-                            continue
-                        
-                        # Truncate indices if needed
-                        if max(in_idx) >= layer.weight.shape[1]:
-                            print(f"WARNING: in_idx too large for {layername}, truncating")
-                            in_idx = in_idx[in_idx < layer.weight.shape[1]]
-                            if in_idx.size == 0:
-                                print(f"ERROR: No valid in_idx for {layername}")
-                                continue
-                        
-                        pruned_layer.weight.data = layer.weight.data[:, in_idx, :, :].clone()
-                        if hasattr(layer, 'bias') and layer.bias is not None:
-                            pruned_layer.bias.data = layer.bias.data.clone()
-                        changed_state.append(layername + ".weight")
-                        if layer.bias is not None:
-                            changed_state.append(layername + ".bias")
-            except Exception as e:
-                print(f"ERROR processing {layername}: {e}")
-                import traceback
-                traceback.print_exc()
-    
-    print(f"Changed {len(changed_state)} states in pruned model")
+        if isinstance(layer, nn.BatchNorm2d):
+            out_idx = np.squeeze(np.argwhere(
+                np.asarray(mask_bn[layername].cpu().numpy())))
+            pruned_layer.weight.data = layer.weight.data[out_idx].clone()
+            pruned_layer.bias.data = layer.bias.data[out_idx].clone()
+            pruned_layer.running_mean = layer.running_mean[out_idx].clone()
+            pruned_layer.running_var = layer.running_var[out_idx].clone()
+            changed_state.append(layername + ".weight")
+            changed_state.append(layername + ".bias")
+            changed_state.append(layername + ".running_mean")
+            changed_state.append(layername + ".running_var")
+            changed_state.append(layername + ".num_batches_tracked")
+
+        if isinstance(layer, nn.Conv2d) and layername.startswith("model.28"):
+            former = from_to_map[layername]
+            in_idx = np.squeeze(np.argwhere(
+                np.asarray(mask_bn[former].cpu().numpy())))
+            pruned_layer.weight.data = layer.weight.data[:, in_idx, :, :]
+            pruned_layer.bias.data = layer.bias.data
+            changed_state.append(layername + ".weight")
+            changed_state.append(layername + ".bias")
     return pruned_model
 
 

@@ -44,6 +44,18 @@ class Conv(nn.Module):
         self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
 
     def forward(self, x):
+        if x.shape[1] != self.conv.weight.shape[1]:
+            print(f"Conv mismatch in {self.__class__.__name__}: input={x.shape[1]}, expected={self.conv.weight.shape[1]}")
+            # Adjust channels
+            if x.shape[1] < self.conv.weight.shape[1]:
+                padding = torch.zeros(x.shape[0], 
+                                    self.conv.weight.shape[1] - x.shape[1],
+                                    x.shape[2], 
+                                    x.shape[3], 
+                                    device=x.device)
+                x = torch.cat([x, padding], dim=1)
+            else:
+                x = x[:, :self.conv.weight.shape[1], :, :]
         return self.act(self.bn(self.conv(x)))
 
     def forward_fuse(self, x):
