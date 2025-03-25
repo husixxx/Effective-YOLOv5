@@ -6,7 +6,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.jpg
+*.jpg:Zone.Identifier
+*.txt
+labelImg-master/
 # C extensions
 *.so
 
