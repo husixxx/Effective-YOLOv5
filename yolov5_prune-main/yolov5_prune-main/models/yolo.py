@@ -1,4 +1,8 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# Contributor: Richard Húska
+# VUT FIT BRNO 2024/2025
+# V tomto subore bolo nutne upravenie funkcie def parse_model(d, ch) na riadku č. 276
+# Muselo byt upravene parsovanie modelu, aby počítalo s pridanými vrstvami z common.py (ECA, Focus, BiFPN_Concat2, BiFPN_Concat3)
 """
 YOLO-specific modules
 
@@ -49,22 +53,7 @@ class Detect(nn.Module):
 
     def forward(self, x):
         z = []  # inference output
-        for i in range(self.nl):
-            # Add channel dimension adaptation for each detection head
-            if isinstance(x[i], torch.Tensor) and x[i].shape[1] != self.m[i].weight.shape[1]:
-                print(f"Detect mismatch at head {i}: input={x[i].shape[1]}, expected={self.m[i].weight.shape[1]}")
-                if x[i].shape[1] < self.m[i].weight.shape[1]:
-                    # Pad if input has fewer channels
-                    padding = torch.zeros(x[i].shape[0],
-                                        self.m[i].weight.shape[1] - x[i].shape[1],
-                                        x[i].shape[2],
-                                        x[i].shape[3],
-                                        device=x[i].device)
-                    x[i] = torch.cat([x[i], padding], dim=1)
-                else:
-                    # Truncate if input has more channels
-                    x[i] = x[i][:, :self.m[i].weight.shape[1], :, :]
-                    
+        for i in range(self.nl): 
             x[i] = self.m[i](x[i])  # conv
             bs, _, ny, nx = x[i].shape  # x(bs,255,20,20) to x(bs,3,20,20,85)
             x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
@@ -298,7 +287,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 n = 1
             if m in {ECALayer}:
                 args = [ch[f]]  # Ensure the correct number of input channels is passed
-                n = 1  # Uistime sa, že sa neopakujeme
+                n = 1  # ensure not repeated
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
         elif m is Concat:
@@ -423,28 +412,11 @@ def parse_pruned_model(mask_bn, d, ch):  # model_dict, input_channels(3)
 
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
-        # elif m in {ECALayer}:
-        #     # c2 = sum(ch[x] for x in f)
-        #     args = [ch[f]]
-        #     fromlayer.append(f"model.{i}")
-              
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
             inputtmp = [fromlayer[x] for x in f]
             fromlayer.append(inputtmp)
         elif m is Detect:
-            
-            # for i, detect_idx in enumerate(f):
-            # #     # Try to find exact C3 cv3.bn layer by name
-            #     target_name = f"model.{detect_idx}.cv3.bn"
-                
-                
-            # #     for layer_idx, layer in enumerate(fromlayer):
-            # #         # Look for exact name first
-            # #         if isinstance(layer, str) and layer == target_name:
-            # #             print(f"Connecting detection head {i} to {layer} (exact match)")
-            # #             # from_to_map[named_m_base + f".m.{i}"] = layer
-            # #             break
             print(fromlayer)
             from_to_map[named_m_base + ".m.0"] = fromlayer[f[0]]
             from_to_map[named_m_base + ".m.1"] = fromlayer[f[1]]
@@ -461,7 +433,7 @@ def parse_pruned_model(mask_bn, d, ch):  # model_dict, input_channels(3)
         elif m is Expand:
             c2 = ch[f] // args[0] ** 2
         elif m in [Focus]:
-            # Focus modules in YOLOv5s have batch norm inside a nested Conv module
+            
             named_m_bn = get_bn_layer(named_m_base, [".conv.bn"])
             
             if not named_m_bn:

@@ -1,4 +1,13 @@
-nc: 80  # počet tried
+#########################
+# YOLOV5 - ECA + BiFPN  #
+# Author: Richard Húska #
+# VUT FIT, BRNO         #
+# Year: 2024/2025       #
+#########################
+# Licencia: YOLOv5 (GPL-3.0 licence) od Ultralytics.
+# Tento súbor vychádza z original modelu YOLOv5 v6.0
+# Pridané komponenty: ECALayer, BiFPN_Concat2,3 #
+nc: 1
 depth_multiple: 0.33
 width_multiple: 0.50
 anchors:
@@ -46,6 +55,5 @@ head:
    [-1, 1, Conv, [512, 3, 2]],                      #25
    [[-1, 13], 1, BiFPN_Concat2, [1]],               #26 ← ECA4 (vrstva 13) + P5
    [-1, 3, C3, [1024, False]],                      #27
-
    [[21, 24, 27], 1, Detect, [nc, anchors]],        # Detect(P3, P4, P5)
   ]

@@ -1,9 +1,12 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# Contributor: Richard Húska
+# VUT FIT BRNO 2024/2025
+# V tomto súbore bola pridaná funkcia pre debug vrstiev modelu, ktorá vypisuje rozmery všetkých vrstiev.
 """
-Validate a trained YOLOv5 model accuracy on a custom dataset
+Prune and validate YOLOv5 models.
 
 Usage:
-    $ python path/to/val.py --data coco128.yaml --weights yolov5s.pt --img 640
+    $ python prune.py --percent 0.5 --data coco128.yaml --weights yolov5s.pt --img 640
 """
 
 from operator import mod
