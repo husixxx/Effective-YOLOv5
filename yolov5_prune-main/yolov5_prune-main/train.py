@@ -12,6 +12,7 @@ Usage:
 
 from models.common import Bottleneck
 from utils.torch_utils import EarlyStopping, ModelEMA, de_parallel, select_device, torch_distributed_zero_first
+# from torch.quantization import quantize_dynamic
 from utils.plots import plot_evolve, plot_labels
 from utils.metrics import fitness
 from utils.loss import ComputeLoss
@@ -432,6 +433,13 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
 
             # Save model
             if (not nosave) or (final_epoch and not evolve):  # if save
+                
+                # model = torch.quantization.quantize_dynamic(
+                #     model,  # Načti svůj model
+                #     {torch.nn.Conv2d, torch.nn.Linear},  # Typy vrstev, které budou kvantizovány
+                #     dtype=torch.qint8  # Použij 8-bitovou kvantizaci (INT8)
+                # )
+                
                 ckpt = {'epoch': epoch,
                         'best_fitness': best_fitness,
                         'model': deepcopy(de_parallel(model)).half(),
@@ -530,6 +538,7 @@ def parse_opt(known=False):
     parser.add_argument('--freeze', nargs='+', type=int, default=[0], help='Freeze layers: backbone=10, first3=0 1 2')
     parser.add_argument('--save-period', type=int, default=-1, help='Save checkpoint every x epochs (disabled if < 1)')
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
+    parser.add_argument('--quantized', action='store_true', help='quantized model')
 
     # Weights & Biases arguments
     parser.add_argument('--entity', default=None, help='W&B: Entity')

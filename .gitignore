@@ -12,6 +12,7 @@ __pycache__/
 labelImg-master/
 # C extensions
 *.so
+scripts/
 
 # Distribution / packaging
 .Python
